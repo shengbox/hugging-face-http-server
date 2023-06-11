@@ -61,6 +61,9 @@ def receive_embedding_by_model(model):
 def receive_embedding_by_organization_model(organization, model):
     return process_embedding_request(request, f"{organization}/{model}")
 
+@app.route("/embeddings", methods=["POST"])
+def receive_embedding():
+    return process_embedding_request(request, "GanymedeNil/text2vec-large-chinese")
 
 @app.route("/images/generations/<model>", methods=["POST"])
 def receive_image_generation_by_model(model):
@@ -109,7 +112,11 @@ def process_embedding_request(request, model):
     request_data = request.data
     json_data = json.loads(request_data)
     try:
-        sentences = json_data["inputs"]
+        if "inputs" in json_data:
+            sentences = json_data["inputs"]
+        else:
+            sentences = json_data["input"]
+        # sentences = json_data["inputs"]
         inference_generator = EmbeddingGenerator.EmbeddingGenerator(model)
         embeddings, num_prompt_tokens = inference_generator.perform_inference(sentences)
         return jsonify(

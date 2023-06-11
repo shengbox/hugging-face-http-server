@@ -7,10 +7,16 @@ from . import InferenceGenerator
 
 
 class EmbeddingGenerator(InferenceGenerator.InferenceGenerator):
+    tokenizer = None
+    model = None
+
     def __init__(self, model_name):
         super().__init__(model_name)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        if not EmbeddingGenerator.tokenizer:
+            EmbeddingGenerator.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.tokenizer = EmbeddingGenerator.tokenizer
+        # self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        # self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def _mean_pooling(self, model_output, attention_mask):
         token_embeddings = model_output[
@@ -22,13 +28,18 @@ class EmbeddingGenerator(InferenceGenerator.InferenceGenerator):
         return x / y
 
     def perform_inference(self, sentences):
-        model = AutoModel.from_pretrained(self.model_name)
+        if not EmbeddingGenerator.model:
+            EmbeddingGenerator.model = AutoModel.from_pretrained(self.model_name)
+        model = EmbeddingGenerator.model
+        # model = AutoModel.from_pretrained(self.model_name)
         model.to(self.device)
 
         encodings = self.tokenizer(
             sentences, padding=True, truncation=True, return_tensors="pt"
         )
 
-        model_output = model(**encodings)
+        with torch.no_grad():
+            model_output = model(**encodings)
+        # model_output = model(**encodings)
         embeddings = self._mean_pooling(model_output, encodings["attention_mask"])
         return embeddings, encodings.input_ids.numel()
