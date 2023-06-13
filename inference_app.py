@@ -10,6 +10,7 @@ from utils import (
     EmbeddingGenerator,
     ImageGenerator,
     create_responses,
+    DocChatGenerator,
 )
 
 # Flask constructor takes the name of
@@ -46,9 +47,9 @@ def images_docs():
 def receive_completion_by_model(model):
     return process_completion_request(request, model)
 
-@app.route("/completions", methods=["POST"])
+@app.route("/doc/chat", methods=["POST"])
 def receive_completion():
-    return process_completion_request(request, "ClueAI/ChatYuan-large-v2")
+    return process_doc_chat_request(request, "ClueAI/ChatYuan-large-v2")
 
 @app.route("/completions/<organization>/<model>", methods=["POST"])
 def receive_completion_by_organization_model(organization, model):
@@ -76,6 +77,39 @@ def receive_image_generation_by_model(model):
 @app.route("/images/generations/<organization>/<model>", methods=["POST"])
 def receive_image_generation_by_organization_model(organization, model):
     return process_image_generation_request(request, f"{organization}/{model}")
+
+
+def process_doc_chat_request(request, model):
+    request_data = request.data
+    json_data = json.loads(request_data)
+    try:
+        prompt = json_data["inputs"]
+        if "context" in json_data:
+            context = json_data["context"]
+        else:
+            context = ""
+
+        if "max_tokens" in json_data:
+            max_tokens = json_data["max_tokens"]
+        else:
+            max_tokens = 32
+
+        inference_generator = DocChatGenerator.DocChatGenerator(model)
+        (
+            result,
+            num_prompt_tokens,
+            num_result_tokens,
+        ) = inference_generator.perform_inference(prompt, context, max_tokens)
+        return jsonify(
+            create_responses.create_completion_response(
+                result, model, num_prompt_tokens, num_result_tokens
+            )
+        )
+    except Exception as e:
+        print(e)
+        return "Sorry, unable to perform sentence completion with model {}".format(
+            model
+        )
 
 
 def process_completion_request(request, model):
