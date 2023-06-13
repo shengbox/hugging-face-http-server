@@ -1,6 +1,6 @@
 # Copyright (c) Microsoft. All rights reserved.
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
 
 from . import InferenceGenerator
 
@@ -9,13 +9,23 @@ from . import InferenceGenerator
 
 
 class CompletionGenerator(InferenceGenerator.InferenceGenerator):
+    tokenizer = None
+    model = None
+
     def __init__(self, model_name):
         super().__init__(model_name)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        if not CompletionGenerator.tokenizer:
+            CompletionGenerator.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        self.tokenizer = CompletionGenerator.tokenizer
+        # self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        # self.tokenizer.pad_token = self.tokenizer.eos_token
 
     def perform_inference(self, prompt, context, max_tokens):
-        model = AutoModelForCausalLM.from_pretrained(self.model_name, is_decoder=True)
+        if not CompletionGenerator.model:
+            CompletionGenerator.model = AutoModel.from_pretrained(self.model_name, is_decoder=True, trust_remote_code=True)
+        model = CompletionGenerator.model
+
+        # model = AutoModel.from_pretrained(self.model_name, is_decoder=True, trust_remote_code=True)
         model.to(self.device)
 
         encodings = self.tokenizer.encode_plus(

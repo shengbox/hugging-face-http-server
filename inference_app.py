@@ -46,6 +46,9 @@ def images_docs():
 def receive_completion_by_model(model):
     return process_completion_request(request, model)
 
+@app.route("/completions", methods=["POST"])
+def receive_completion():
+    return process_completion_request(request, "ClueAI/ChatYuan-large-v2")
 
 @app.route("/completions/<organization>/<model>", methods=["POST"])
 def receive_completion_by_organization_model(organization, model):
